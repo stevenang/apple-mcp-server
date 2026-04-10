@@ -1,3 +1,7 @@
+// ---------------------------------------------------------------------------
+// Mail
+// ---------------------------------------------------------------------------
+
 export interface EmailMessage {
   id: string;
   uid: number;
@@ -10,6 +14,18 @@ export interface EmailMessage {
   htmlBody?: string;
   flags: string[];
   folder: string;
+}
+
+// ---------------------------------------------------------------------------
+// Calendar
+// ---------------------------------------------------------------------------
+
+export interface Calendar {
+  id: string;
+  displayName: string;
+  color?: string;
+  description?: string;
+  url: string;
 }
 
 export interface CalendarEvent {
@@ -25,14 +41,21 @@ export interface CalendarEvent {
   allDay: boolean;
   recurrence?: string;
   url?: string;
+  /** ETag from the CalDAV server — required for update/delete to avoid conflicts. */
+  etag?: string;
 }
 
-export interface Calendar {
-  id: string;
-  displayName: string;
-  color?: string;
-  description?: string;
-  url: string;
+// ---------------------------------------------------------------------------
+// Contacts
+// ---------------------------------------------------------------------------
+
+export interface ContactAddress {
+  type: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 export interface Contact {
@@ -47,15 +70,18 @@ export interface Contact {
   organization?: string;
   notes?: string;
   url?: string;
+  /** ETag from the CardDAV server — required for update operations. */
+  etag?: string;
 }
 
-export interface ContactAddress {
-  type: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
+// ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+export interface ReminderList {
+  id: string;
+  displayName: string;
+  url: string;
 }
 
 export interface Reminder {
@@ -70,12 +96,12 @@ export interface Reminder {
   completedDate?: Date;
   priority: number;
   url?: string;
+  /** ETag from the CalDAV server — required for complete/delete operations. */
+  etag?: string;
 }
 
-export interface ReminderList {
-  id: string;
-  displayName: string;
-  url: string;
-}
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
 
 export type ResponseFormat = 'markdown' | 'json';

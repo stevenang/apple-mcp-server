@@ -1,31 +1,113 @@
+/**
+ * Maps low-level protocol errors to actionable user-facing messages.
+ * All error messages must tell the user what went wrong AND what to do next.
+ */
 export function handleError(err: unknown, context: string): string {
   const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
 
-  if (message.includes('auth') || message.includes('LOGIN') || message.includes('credentials')) {
+  // --- Authentication / authorization ---
+  if (
+    lower.includes('authenticate') ||
+    lower.includes('authenticationfailed') ||
+    lower.includes('invalid credentials') ||
+    lower.includes('login failed') ||
+    lower.includes('[authenticationfailed]') ||
+    lower.includes('401')
+  ) {
     return (
       `Authentication failed for ${context}. ` +
-      `Verify your app-specific password at https://appleid.apple.com ` +
-      `(Sign-In and Security → App-Specific Passwords).`
+      `Make sure you are using an app-specific password (not your Apple ID password). ` +
+      `Generate one at https://appleid.apple.com → Sign-In and Security → App-Specific Passwords.`
     );
   }
 
-  if (message.includes('ECONNREFUSED') || message.includes('ENOTFOUND')) {
+  if (lower.includes('403') || lower.includes('forbidden')) {
     return (
-      `Cannot connect to ${context}. Check your network connection and that ` +
-      `iCloud services are reachable.`
+      `Permission denied accessing ${context}. ` +
+      `Verify your app-specific password is valid at https://appleid.apple.com. ` +
+      `Two-factor authentication must be enabled on your Apple ID.`
     );
   }
 
-  if (message.includes('403') || message.includes('Forbidden')) {
+  // --- Not found ---
+  if (lower.includes('404') || lower.includes('not found')) {
+    return `Item not found in ${context}. It may have been deleted or moved. (${message})`;
+  }
+
+  // --- ETag / concurrency conflict (CalDAV/CardDAV update collision) ---
+  if (lower.includes('412') || lower.includes('precondition failed')) {
     return (
-      `Permission denied for ${context}. ` +
-      `Verify your app-specific password has the required permissions at https://appleid.apple.com`
+      `Conflict updating ${context}: the item was modified elsewhere since it was last read. ` +
+      `Fetch the latest version and retry.`
     );
   }
 
-  if (message.includes('404') || message.includes('Not Found')) {
-    return `Resource not found in ${context}: ${message}`;
+  // --- Network / connectivity ---
+  if (lower.includes('econnrefused')) {
+    return (
+      `Connection refused by ${context}. ` +
+      `Check that you are connected to the internet and that iCloud services are reachable.`
+    );
   }
 
+  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+    return (
+      `Cannot resolve the hostname for ${context}. ` +
+      `Check your internet connection and DNS settings.`
+    );
+  }
+
+  if (lower.includes('etimedout') || lower.includes('timeout') || lower.includes('timed out')) {
+    return (
+      `Connection to ${context} timed out. ` +
+      `iCloud servers may be temporarily unavailable. Try again in a moment.`
+    );
+  }
+
+  if (lower.includes('econnreset') || lower.includes('connection reset')) {
+    return (
+      `Connection to ${context} was reset. ` +
+      `This may be a temporary network issue. Try again.`
+    );
+  }
+
+  // --- SSL/TLS ---
+  if (lower.includes('ssl') || lower.includes('tls') || lower.includes('certificate')) {
+    return (
+      `TLS/SSL error connecting to ${context}: ${message}. ` +
+      `Ensure your system's certificate store is up to date.`
+    );
+  }
+
+  // --- IMAP-specific server responses ---
+  if (lower.includes('[unavailable]') || lower.includes('server unavailable')) {
+    return `iCloud Mail service is temporarily unavailable. Try again in a few minutes.`;
+  }
+
+  if (lower.includes('[overquota]')) {
+    return `Your iCloud Mail storage is full. Free up space at icloud.com and retry.`;
+  }
+
+  if (lower.includes('no such mailbox') || lower.includes('[nonexistent]')) {
+    return `Mailbox not found in ${context}. Check the folder name and try again.`;
+  }
+
+  // --- Generic fallback ---
   return `Error in ${context}: ${message}`;
+}
+
+/**
+ * Wraps an async operation and converts any thrown error to a user-facing string.
+ * Returns `{ ok: true, value }` or `{ ok: false, error }`.
+ */
+export async function tryCatch<T>(
+  fn: () => Promise<T>,
+  context: string
+): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, value: await fn() };
+  } catch (err) {
+    return { ok: false, error: handleError(err, context) };
+  }
 }
