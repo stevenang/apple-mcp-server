@@ -1,0 +1,37 @@
+{
+  "name": "apple-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server connecting Claude to Apple iCloud services (Mail, Calendar, Contacts, Reminders)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "apple-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx --watch src/index.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "imapflow": "^1.0.0",
+    "nodemailer": "^6.0.0",
+    "tsdav": "^2.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/nodemailer": "^6.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
