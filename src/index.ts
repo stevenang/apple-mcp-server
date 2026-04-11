@@ -38,6 +38,10 @@ async function startHttp(port: number): Promise<void> {
   await server.connect(transport);
 
   const httpServer = createServer(async (req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' }).end('OK');
+      return;
+    }
     if (req.url === '/mcp') {
       const chunks: Buffer[] = [];
       for await (const chunk of req as AsyncIterable<Buffer>) {
@@ -45,9 +49,9 @@ async function startHttp(port: number): Promise<void> {
       }
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
       await transport.handleRequest(req, res, body);
-    } else {
-      res.writeHead(404).end('Not found. Use POST /mcp');
+      return;
     }
+    res.writeHead(404).end('Not found. Use POST /mcp');
   });
 
   httpServer.listen(port, () => {
@@ -58,16 +62,26 @@ async function startHttp(port: number): Promise<void> {
   process.on('SIGTERM', () => { httpServer.close(); process.exit(0); });
 }
 
-async function main(): Promise<void> {
-  const useHttp = process.argv.includes('--http');
-  const portArg = process.argv.find((a) => a.startsWith('--port='));
-  const port = portArg ? parseInt(portArg.split('=')[1], 10) : 8000;
+function parseArgs(): { transport: 'stdio' | 'http'; port: number } {
+  const argv = process.argv;
+  const transportIdx = argv.indexOf('--transport');
+  const transport =
+    transportIdx !== -1 && argv[transportIdx + 1] === 'http' ? 'http' : 'stdio';
+  const portIdx = argv.indexOf('--port');
+  const port =
+    portIdx !== -1 && argv[portIdx + 1]
+      ? parseInt(argv[portIdx + 1], 10)
+      : 8000;
+  return { transport, port };
+}
 
-  if (useHttp) {
+async function main(): Promise<void> {
+  const { transport, port } = parseArgs();
+
+  if (transport === 'http') {
     await startHttp(port);
   } else {
     await startStdio();
-    // Graceful shutdown for stdio mode
     process.on('SIGINT', () => process.exit(0));
     process.on('SIGTERM', () => process.exit(0));
   }
