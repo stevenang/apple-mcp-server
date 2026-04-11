@@ -1,0 +1,43 @@
+# Docker Compose for Apple MCP Server
+#
+# Usage:
+#   cp .env.example .env          # Fill in your credentials
+#   docker compose up -d           # Start HTTP server (default)
+#   docker compose logs -f         # Watch logs
+#   docker compose down            # Stop
+#
+# The server exposes a Streamable HTTP endpoint at:
+#   http://localhost:8000/mcp
+
+services:
+  apple-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apple-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-8000}:8000"
+    environment:
+      - ICLOUD_EMAIL=${ICLOUD_EMAIL}
+      - ICLOUD_APP_PASSWORD=${ICLOUD_APP_PASSWORD}
+      - NODE_ENV=production
+    env_file:
+      - .env
+    # Security: read-only filesystem, no privilege escalation
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
