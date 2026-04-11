@@ -3,7 +3,23 @@
  * All error messages must tell the user what went wrong AND what to do next.
  */
 export function handleError(err: unknown, context: string): string {
-  const message = err instanceof Error ? err.message : String(err);
+  // Log full stack to stderr so the operator can diagnose issues without
+  // exposing internals to the MCP client response.
+  if (err instanceof Error) {
+    process.stderr.write(`[apple-mcp-server] Error in ${context}:\n${err.stack ?? err.message}\n`);
+  } else {
+    process.stderr.write(`[apple-mcp-server] Error in ${context}: ${String(err)}\n`);
+  }
+
+  // imapflow sets err.responseText to the raw IMAP server response text
+  // (e.g. "[AUTHENTICATIONFAILED] Authentication failed.") when the generic
+  // err.message is just "Command failed". Prefer responseText when present.
+  const imapResponseText =
+    err instanceof Error && typeof (err as unknown as Record<string, unknown>)['responseText'] === 'string'
+      ? ((err as unknown as Record<string, unknown>)['responseText'] as string)
+      : undefined;
+
+  const message = imapResponseText ?? (err instanceof Error ? err.message : String(err));
   const lower = message.toLowerCase();
 
   // --- Authentication / authorization ---
@@ -94,6 +110,10 @@ export function handleError(err: unknown, context: string): string {
   }
 
   // --- Generic fallback ---
+  // If imapflow gave us a responseText, include both for full context.
+  if (imapResponseText && imapResponseText !== message) {
+    return `Error in ${context}: ${imapResponseText}`;
+  }
   return `Error in ${context}: ${message}`;
 }
 
